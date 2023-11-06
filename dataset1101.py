@@ -60,7 +60,7 @@ class SoundData(Dataset):
             repeated_start = start + i * (end - start)
             repeated_end = repeated_start + (end - start)
             repeated_annotation.append((repeated_start, repeated_end, label))
-      return repeated_annotation      
+      return repeated_annotation
 
     def __getitem__(self, idx):
       wav_file = self.wav_files[idx]
@@ -95,7 +95,7 @@ class SoundData(Dataset):
       return {
       "waveform": processed_waveform,
       "sample_rate": sample_rate,
-      "labels": repeated_labels_df  # Use the repeated annotation 
+      "labels": repeated_labels_df  # Use the repeated annotation
       }
 
 
