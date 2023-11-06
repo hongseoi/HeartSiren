@@ -25,26 +25,21 @@ class SoundData(Dataset):
         self.freq_low = f_l
         self.freq_high = f_h
         self.sample_rate = s_r
-        self.b, self.a = signal.butter(4, [self.freq_low, self.freq_high], btype='band', fs=self.sample_rate)
 
         self.max_second = m_s
 
     def __len__(self):
         return len(self.wav_files)
 
-    # 전처리 함수
     def band_pass_filter(self, waveform):
         # filter 적용
+        b, a = signal.butter(4, self.freq_high, btype='low', fs=self.sample_rate)
+
         num_channels = waveform.shape[0]
         for i in range(num_channels):
-            waveform[i] = torch.tensor(signal.lfilter(self.b, self.a, waveform[i].numpy()))
+            waveform[i] = torch.tensor(signal.lfilter(b, a, waveform[i].numpy()))
         return waveform
 
-        # othertransform
-        # processed_waveform = self.transforms(waveform)
-        # return processed_waveform
-
-    # repeat 기법 사용해 데이터 길이 10초로 동일화
     def repeat_waveform(self, waveform, target_duration):
         num_channels, num_frames = waveform.shape
         target_num_frames = int(target_duration * self.sample_rate)
@@ -58,6 +53,7 @@ class SoundData(Dataset):
         # Trim or repeat to match the exact target duration
         if num_frames > target_num_frames:
             waveform = waveform[:, :target_num_frames]
+
         elif num_frames < target_num_frames:
             padding = torch.zeros(num_channels, target_num_frames - num_frames)
             waveform = torch.cat((waveform, padding), dim=1)
@@ -66,14 +62,21 @@ class SoundData(Dataset):
 
     def repeat_annotation(self, annotation):
         repeated_annotation = []
+
         add_start = 0
-        while True:            
+        repeated_end = 0
+        while repeated_end < self.max_second:
             for start, end, label in annotation:
                 repeated_start = start + add_start
                 repeated_end = end + add_start
-                if repeated_end > 10:
-                    repeated_end = 10
+
                 repeated_annotation.append((repeated_start, repeated_end, label))
+
+                if self.max_second <= repeated_end:
+                    repeated_annotation[-1] = (repeated_start, self.max_second, label)
+                    break
+
+            add_start += repeated_end
 
         return repeated_annotation
 
@@ -86,7 +89,7 @@ class SoundData(Dataset):
 
         # Preprocess and repeat waveform
         processed_waveform = self.band_pass_filter(waveform)
-        processed_waveform = self.repeat_waveform(processed_waveform, target_duration=10.0)
+        processed_waveform = self.repeat_waveform(processed_waveform, target_duration=self.max_second)
 
         # Get the corresponding TSV file
         tsv_file = os.path.splitext(wav_file)[0] + ".tsv"
@@ -96,27 +99,23 @@ class SoundData(Dataset):
         labels_df = pd.read_csv(tsv_path, delimiter='\t', header=None)
         original_annotation = list(zip(labels_df[0], labels_df[1], labels_df[2]))
 
-        # Calculate the number of repetitions based on the original annotation
-        annotation_duration = labels_df[1].max() - labels_df[0].min()
-        print('dura', annotation_duration, int(10/ annotation_duration))
-        num_repetitions = int(10.0 / annotation_duration)
-
         # Repeat and adjust the annotation
-        repeated_annotation = self.repeat_annotation(original_annotation, num_repetitions)
+        repeated_annotation = self.repeat_annotation(original_annotation)
 
         # Create a new DataFrame with the repeated annotation
-        repeated_labels_df = pd.DataFrame(repeated_annotation, columns=[0, 1, 2])
+        repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'anno'])
 
         return {
             "waveform": processed_waveform,
             "sample_rate": sample_rate,
-            "labels": repeated_labels_df  # Use the repeated annotation
+            "anno_data": repeated_labels_df  # Use the repeated annotation
         }
 
 
-data_folder_path = "../data/training_data/"
-dataset = SoundData(data_folder_path)
+if __name__ == '__main__':
+    data_folder_path = "../data/training_data/"
+    dataset = SoundData(data_folder_path)
 
-# Access individual data samples
-sample = dataset[3]
-print(sample)
+    # Access individual data samples
+    sample = dataset[3]
+    print(sample)
