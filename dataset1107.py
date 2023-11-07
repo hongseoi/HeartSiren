@@ -66,17 +66,13 @@ class SoundData(Dataset):
 
         if num_frames < target_num_frames:
             # Repeat the waveform to reach the target duration
-            repetitions = target_num_frames // num_frames
+            repetitions = target_num_frames // num_frames + 1
             waveform = waveform.repeat(1, repetitions)
             num_frames = waveform.shape[1]
 
         # Trim or repeat to match the exact target duration
         if num_frames > target_num_frames:
             waveform = waveform[:, :target_num_frames]
-
-        elif num_frames < target_num_frames:
-            padding = torch.zeros(num_channels, target_num_frames - num_frames)
-            waveform = torch.cat((waveform, padding), dim=1)
 
         return waveform
 
