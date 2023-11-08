@@ -3,10 +3,10 @@ import librosa.display
 import matplotlib.pyplot as plt
 import numpy as np
 
-import dataset_lhg as d
+from HeartSiren import dataset_lhg as d
 import wav_to_image as wti
 
-data_folder_path = '../../data_1107/'
+data_folder_path = 'data_1107/'
 dataset = d.SoundData(data_folder_path)
 resample_rate = 8000
 dataset.resample_rate = resample_rate
