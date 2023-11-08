@@ -4,6 +4,7 @@ import numpy as np
 
 import torchaudio
 from torch.utils.data import Dataset
+#from torchaudio.transforms import LowPassFilter
 import scipy.signal as signal
 import torch
 import librosa
@@ -37,13 +38,15 @@ class SoundData(Dataset):
 
         return sig
 
-    def low_pass_filter(self, waveform):
-        nyq = 0.5 * self.sample_rate
-        cut_off = self.cut_off / nyq
-        b, a = signal.butter(5, cut_off, btype='low', fs=self.sample_rate)
-
-        return signal.lfilter(b, a, waveform)
-
+    def low_pass_filter(self, waveform, cut_freq):
+        #nyq = 0.5 * self.sample_rate
+        #cut_off = self.cut_off / nyq
+        #b, a = signal.butter(5, cut_off, btype='low', fs=self.sample_rate)
+        waveform = torch.from_numpy(waveform)
+        lowpass_waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=cut_freq)
+        lowpass_waveform = lowpass_waveform.numpy()
+        return lowpass_waveform
+    
     def repeat_waveform(self, waveform, target_duration):
         num_frames = waveform.shape[0]
         target_num_frames = int(target_duration * self.sample_rate)
@@ -92,7 +95,7 @@ class SoundData(Dataset):
         sig = self.resampling(sig)
 
         # Preprocess and repeat waveform
-        sig = self.low_pass_filter(sig)
+        sig = self.low_pass_filter(sig, 500)
         processed_waveform = self.repeat_waveform(sig, target_duration=self.max_second)
 
         # Get the corresponding TSV file
@@ -117,7 +120,7 @@ class SoundData(Dataset):
 
 
 if __name__ == '__main__':
-    data_folder_path = "../data/training_data/"
+    data_folder_path = "data/"
     dataset = SoundData(data_folder_path)
 
     # Access individual data samples
