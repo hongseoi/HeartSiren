@@ -3,7 +3,7 @@ import librosa.display
 import matplotlib.pyplot as plt
 import numpy as np
 
-import dataset_lhg as d
+import dataset as d
 import wav_to_image as wti
 
 data_folder_path = '../../data_1107/'
