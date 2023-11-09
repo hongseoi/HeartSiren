@@ -38,11 +38,16 @@ class SoundData(Dataset):
         return sig
 
     def low_pass_filter(self, waveform):
-        nyq = 0.5 * self.sample_rate
-        cut_off = self.cut_off / nyq
-        b, a = signal.butter(5, cut_off, btype='low', fs=self.sample_rate)
+        # nyq = 0.5 * self.sample_rate
+        # cut_off = self.cut_off / nyq
+        # b, a = signal.butter(5, cut_off, btype='low', fs=self.sample_rate)
+        #
+        # return signal.lfilter(b, a, waveform)
 
-        return signal.lfilter(b, a, waveform)
+        waveform = torch.from_numpy(waveform)
+        lowpass_waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.cut_off)
+        lowpass_waveform = lowpass_waveform.numpy()
+        return lowpass_waveform
 
     def repeat_waveform(self, waveform, target_duration):
         num_frames = waveform.shape[0]
