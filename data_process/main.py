@@ -6,12 +6,12 @@ import numpy as np
 import dataset as d
 import wav_to_image as wti
 
-data_folder_path = '../../data_1107/'
+data_folder_path = './data/'
 dataset = d.SoundData(data_folder_path)
 resample_rate = 8000
 dataset.resample_rate = resample_rate
 
-second = 5
+second = 6
 dataset.max_second = second
 
 for idx, data in enumerate(dataset):
@@ -24,7 +24,7 @@ for idx, data in enumerate(dataset):
     plt.figure(figsize=(10, 5))
     mel = librosa.feature.melspectrogram(y=sig, sr=resample_rate)
     librosa.display.specshow(mel, sr=resample_rate, hop_length=hop_length)
-    plt.savefig(f'spec_{resample_rate}_{second}/{file_name}.png', bbox_inches="tight", pad_inches=0)
+    plt.savefig(f'./{file_name}_1.png', bbox_inches="tight", pad_inches=0)
     plt.plot()
     plt.close()
     if idx == 4:

@@ -20,15 +20,23 @@ def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
 
 
+def load_mobilenetv3(pretrained=True):
+    model = mobilenet_v3_large(pretrained=pretrained)
+    backbone = model.features
+    return backbone
+
+def load_mobilenetv3(pretrained=True):
+    model = mobilenet_v3_large(pretrained=pretrained)
+    backbone = model.features
+    return backbone
+
+
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Training With Pytorch')
-train_set = parser.add_mutually_exclusive_group()
 parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO'],
                     type=str, help='VOC or COCO')
 parser.add_argument('--dataset_root', default=VOC_ROOT,
                     help='Dataset root directory path')
-parser.add_argument('--basenet', default='vgg16_reducedfc.pth',
-                    help='Pretrained base model')
 parser.add_argument('--batch_size', default=32, type=int,
                     help='Batch size for training')
 parser.add_argument('--resume', default=None, type=str,
@@ -52,6 +60,14 @@ parser.add_argument('--visdom', default=False, type=str2bool,
 parser.add_argument('--save_folder', default='weights/',
                     help='Directory for saving checkpoint models')
 args = parser.parse_args()
+
+
+# Model initialization
+mobilenet_backbone = load_mobilenetv3(pretrained=True)
+# Assume extras and mbox configurations are defined
+extras_ = add_extras(extras[str(size)], 1024)  # Adjust as needed
+head_ = multibox(mobilenet_backbone, extras_, mbox[str(size)], num_classes)
+ssd_model = SSD(phase, size, mobilenet_backbone, extras_, head_, num_classes)
 
 
 if torch.cuda.is_available():
@@ -103,9 +119,9 @@ def train():
         print('Resuming training, loading {}...'.format(args.resume))
         ssd_net.load_weights(args.resume)
     else:
-        vgg_weights = torch.load(args.save_folder + args.basenet)
         print('Loading base network...')
-        ssd_net.vgg.load_state_dict(vgg_weights)
+        mobilenet_weights = torch.load('path_to_mobilenetv3_weights.pth')
+        ssd_net.backbone.load_state_dict(mobilenet_weights)
 
     if args.cuda:
         net = net.cuda()
