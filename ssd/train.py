@@ -2,6 +2,7 @@ from data import *
 from utils.augmentations import SSDAugmentation
 from layers.modules import MultiBoxLoss
 from ssd import build_ssd
+from ssdlite import build_ssdlite
 import os
 import sys
 import time
@@ -20,21 +21,10 @@ def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
 
 
-def load_mobilenetv3(pretrained=True):
-    model = mobilenet_v3_large(pretrained=pretrained)
-    backbone = model.features
-    return backbone
-
-def load_mobilenetv3(pretrained=True):
-    model = mobilenet_v3_large(pretrained=pretrained)
-    backbone = model.features
-    return backbone
-
-
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Training With Pytorch')
-parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO'],
-                    type=str, help='VOC or COCO')
+parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO', 'CIRCOR'],
+                    type=str, help='VOC, COCO and CIRCOR')
 parser.add_argument('--dataset_root', default=VOC_ROOT,
                     help='Dataset root directory path')
 parser.add_argument('--batch_size', default=32, type=int,
@@ -60,14 +50,6 @@ parser.add_argument('--visdom', default=False, type=str2bool,
 parser.add_argument('--save_folder', default='weights/',
                     help='Directory for saving checkpoint models')
 args = parser.parse_args()
-
-
-# Model initialization
-mobilenet_backbone = load_mobilenetv3(pretrained=True)
-# Assume extras and mbox configurations are defined
-extras_ = add_extras(extras[str(size)], 1024)  # Adjust as needed
-head_ = multibox(mobilenet_backbone, extras_, mbox[str(size)], num_classes)
-ssd_model = SSD(phase, size, mobilenet_backbone, extras_, head_, num_classes)
 
 
 if torch.cuda.is_available():
@@ -103,12 +85,23 @@ def train():
         dataset = VOCDetection(root=args.dataset_root,
                                transform=SSDAugmentation(cfg['min_dim'],
                                                          MEANS))
+    elif args.dataset == 'CIRCOR':
+        if args.dataset_root == VOC_ROOT:
+            parser.error('Must specify dataset if specifying dataset_root')
+        cfg = circor
+        dataset = CirCorDetection(root=args.dataset_root,
+                                  image_set='TRAIN_RECORDS',
+                                  transform=SSDAugmentation(cfg['min_dim'],
+                                                            MEANS))
 
     if args.visdom:
         import visdom
         viz = visdom.Visdom()
 
-    ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
+    if args.dataset == 'CIRCOR':
+        ssd_net = build_ssdlite('train', cfg['num_classes'])
+    else:
+        ssd_net = build_ssd('train', cfg['min_dim'], cfg['num_classes'])
     net = ssd_net
 
     if args.cuda:
@@ -118,7 +111,7 @@ def train():
     if args.resume:
         print('Resuming training, loading {}...'.format(args.resume))
         ssd_net.load_weights(args.resume)
-    else:
+    elif args.dataset != 'CIRCOR':
         print('Loading base network...')
         mobilenet_weights = torch.load('path_to_mobilenetv3_weights.pth')
         ssd_net.backbone.load_state_dict(mobilenet_weights)
@@ -164,6 +157,7 @@ def train():
                                   pin_memory=True,
                                   generator=torch.Generator(device='cuda')
                                   )
+
     # create batch iterator
     batch_iterator = iter(data_loader)
     for iteration in range(args.start_iter, cfg['max_iter']):
@@ -218,7 +212,7 @@ def train():
 
         if iteration != 0 and iteration % 5000 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_' +
+            torch.save(ssd_net.state_dict(), f'weights/ssd300_{args.dataset}_' +
                        repr(iteration) + '.pth')
     torch.save(ssd_net.state_dict(),
                args.save_folder + '' + args.dataset + '.pth')
@@ -242,7 +236,8 @@ def xavier(param):
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
         xavier(m.weight.data)
-        m.bias.data.zero_()
+        if m.bias is not None:
+            m.bias.data.zero_()
 
 
 def create_vis_plot(_xlabel, _ylabel, _title, _legend):
