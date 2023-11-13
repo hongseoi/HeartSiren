@@ -37,6 +37,10 @@ class SoundData(Dataset):
             return librosa.resample(sig, orig_sr=self.sample_rate, target_sr=self.resample_rate)
 
         return sig
+    
+    def normalization(self, sig):
+        return (sig-sig.mean())/sig.std()
+
 
     def low_pass_filter(self, waveform):
         # nyq = 0.5 * self.sample_rate
@@ -94,6 +98,7 @@ class SoundData(Dataset):
         waveform, self.sample_rate = torchaudio.load(wav_path)
         sig, sr = librosa.load(wav_path, sr=self.sample_rate)
 
+        #sig = self.normalization(sig)
         sig = self.resampling(sig)
 
         # Preprocess and repeat waveform
@@ -122,7 +127,7 @@ class SoundData(Dataset):
 
 
 if __name__ == '__main__':
-    data_folder_path = "../data/training_data/"
+    data_folder_path = "./data/"
     dataset = SoundData(data_folder_path)
 
     # Access individual data samples
