@@ -8,10 +8,10 @@ import wav_to_image as wti
 
 data_folder_path = '../../data_1107/'
 dataset = d.SoundData(data_folder_path)
-resample_rate = 8000
+resample_rate = 24000
 dataset.resample_rate = resample_rate
 
-second = 5
+second = 10
 dataset.max_second = second
 
 for idx, data in enumerate(dataset):
@@ -19,12 +19,18 @@ for idx, data in enumerate(dataset):
     sig = data['waveform']
 
     # STFT -> spectrogram
-    hop_length = 512  # 전체 frame 수
+    # number of samples between successive frames. See librosa.core.stft
+    frame_length = 0.064
+    frame_stride = 0.025
+    input_nfft = int(round(resample_rate * frame_length))
+    input_stride = int(round(resample_rate * frame_stride))
+    print(input_stride, input_nfft)
+    hop_length = 1024
     # display spectrogram
     plt.figure(figsize=(10, 5))
-    mel = librosa.feature.melspectrogram(y=sig, sr=resample_rate)
-    librosa.display.specshow(mel, sr=resample_rate, hop_length=hop_length)
-    plt.savefig(f'spec_{resample_rate}_{second}/{file_name}.png', bbox_inches="tight", pad_inches=0)
+    mel = librosa.feature.melspectrogram(y=sig, sr=resample_rate, n_fft=input_nfft, hop_length=input_stride)
+    librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=resample_rate, hop_length=input_stride, y_axis='mel',)
+    plt.savefig(f'spec_{resample_rate}_{second}/{file_name}_3.png')
     plt.plot()
     plt.close()
     if idx == 4:

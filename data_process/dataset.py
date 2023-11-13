@@ -41,10 +41,11 @@ class SoundData(Dataset):
     def low_pass_filter(self, waveform):
         # nyq = 0.5 * self.sample_rate
         # cut_off = self.cut_off / nyq
-        # b, a = signal.butter(5, cut_off, btype='low', fs=self.sample_rate)
+        # b, a = signal.butter(2, cut_off, btype='low', fs=self.sample_rate)
+        # return signal.filtfilt(b, a, waveform)
 
         waveform = torch.from_numpy(waveform)
-        lowpass_waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.cut_off)
+        lowpass_waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.cut_off, Q=1)
         lowpass_waveform = lowpass_waveform.numpy()
         return lowpass_waveform
 
