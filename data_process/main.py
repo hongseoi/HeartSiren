@@ -30,8 +30,9 @@ for idx, data in enumerate(dataset):
     # display spectrogram
     plt.figure(figsize=(10, 5))
     mel = librosa.feature.melspectrogram(y=sig, sr=resample_rate, n_fft=input_nfft, hop_length=input_stride)
-    librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=resample_rate, hop_length=input_stride)
-    plt.savefig(f'spec_{resample_rate}_{second}/{file_name}.png', bbox_inches="tight", pad_inches=0)
+    librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=resample_rate, hop_length=input_stride, y_axis='mel', x_axis='time')
+    plt.show()
+    plt.savefig(f'spec_{resample_rate}_{second}/{file_name}_a.png')
     plt.plot()
     plt.close()
     if idx == 4:

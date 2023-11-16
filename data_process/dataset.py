@@ -33,14 +33,13 @@ class SoundData(Dataset):
 
     def resampling(self, sig):
         if self.sample_rate != self.resample_rate:
+            sig = librosa.resample(sig, orig_sr=self.sample_rate, target_sr=self.resample_rate)
             self.sample_rate = self.resample_rate
-            return librosa.resample(sig, orig_sr=self.sample_rate, target_sr=self.resample_rate)
 
         return sig
     
     def normalization(self, sig):
         return (sig-sig.mean())/sig.std()
-
 
     def low_pass_filter(self, waveform):
         # nyq = 0.5 * self.sample_rate
@@ -117,7 +116,7 @@ class SoundData(Dataset):
         repeated_annotation = self.repeat_annotation(original_annotation)
 
         # Create a new DataFrame with the repeated annotation
-        repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'anno'])
+        repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'annotations'])
 
         return {
             'file_name': file_name,
