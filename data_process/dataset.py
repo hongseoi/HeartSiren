@@ -41,7 +41,7 @@ class SoundData(Dataset):
 
     def resampling(self, sig):
         if self.sample_rate != self.resample_rate:
-            sig =  librosa.resample(sig, orig_sr=self.sample_rate, target_sr=self.resample_rate)
+            sig = librosa.resample(sig, orig_sr=self.sample_rate, target_sr=self.resample_rate)
             self.sample_rate = self.resample_rate
             return sig            
 
@@ -49,7 +49,6 @@ class SoundData(Dataset):
     
     def normalization(self, sig):
         return (sig-sig.mean())/sig.std()
-
 
     def low_pass_filter(self, wf):
         # nyq = 0.5 * self.sample_rate
@@ -79,7 +78,7 @@ class SoundData(Dataset):
         band_pass_waveform = torchaudio.functional.bandpass_biquad(waveform, self.sample_rate, central_freq=500, Q=2)
         return waveform.numpy()
     
-    def repeat_waveform(self, waveform, target_duration):
+    def repeat_waveform(self, waveform):
         num_frames = waveform.shape[0]
         print(waveform.shape)
         target_num_frames = int(target_duration * self.sample_rate)
@@ -141,7 +140,7 @@ class SoundData(Dataset):
         #sig = self.band_pass_filter(sig)
         #sig = self.high_pass_filter(sig)
 
-        processed_waveform = self.repeat_waveform(sig, target_duration=self.max_second)
+        processed_waveform = self.repeat_waveform(sig)
        
         # Get the corresponding TSV file
         tsv_file = file_name + ".tsv"
@@ -155,7 +154,7 @@ class SoundData(Dataset):
         repeated_annotation = self.repeat_annotation(original_annotation)
 
         # Create a new DataFrame with the repeated annotation
-        repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'anno'])
+        repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'annotations'])
 
         # Save the new TSV file in the output folder
         output_path = os.path.join(self.output_folder, file_name + ".tsv")

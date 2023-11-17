@@ -94,7 +94,7 @@ def plot_specgram(waveform, sample_rate, xlim=None, save=False, file_name=None, 
     if save:
         save_folder = 'image'
         if anno_dict:
-            save_folder = 'anno'
+            save_folder = 'annotations'
         plt.savefig(f'{save_folder}/{file_name}_specgram.png', bbox_inches="tight", pad_inches=0)
         # plt.savefig(f'{file_name}_specgram.png')
         plt.close()
