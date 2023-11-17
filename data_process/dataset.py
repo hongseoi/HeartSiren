@@ -52,9 +52,9 @@ class SoundData(Dataset):
         lowpass_waveform = lowpass_waveform.numpy()
         return lowpass_waveform
 
-    def repeat_waveform(self, waveform, target_duration):
+    def repeat_waveform(self, waveform):
         num_frames = waveform.shape[0]
-        target_num_frames = int(target_duration * self.sample_rate)
+        target_num_frames = int(self.max_second * self.sample_rate)
 
         if num_frames < target_num_frames:
             # Repeat the waveform to reach the target duration
@@ -102,7 +102,7 @@ class SoundData(Dataset):
 
         # Preprocess and repeat waveform
         sig = self.low_pass_filter(sig)
-        processed_waveform = self.repeat_waveform(sig, target_duration=self.max_second)
+        processed_waveform = self.repeat_waveform(sig)
 
         # Get the corresponding TSV file
         tsv_file = file_name + ".tsv"

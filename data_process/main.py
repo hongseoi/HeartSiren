@@ -35,5 +35,6 @@ for idx, data in enumerate(dataset):
     plt.savefig(f'spec_{resample_rate}_{second}/{file_name}_a.png')
     plt.plot()
     plt.close()
+
     if idx == 4:
         break
