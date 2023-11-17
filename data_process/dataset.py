@@ -8,10 +8,12 @@ from torch.utils.data import Dataset
 import scipy.signal as signal
 import torch
 import librosa
+from filter import Biquad
 
 
 class SoundData(Dataset):
-    def __init__(self, f_p, c_o=500, m_s=10, re_rate=8000):
+    def __init__(self, f_p, h_c=500, m_s=10, re_rate=8000, o_p="./processed_data"):
+
         """
 
         :param f_p: data_folder_path
@@ -21,10 +23,16 @@ class SoundData(Dataset):
         """
 
         self.folder_path = f_p
-        self.wav_files = [f for f in os.listdir(self.folder_path) if f.endswith(".wav")]
+        self.output_folder = o_p
 
-        self.cut_off = c_o
-        self.sample_rate = 0
+        # 폴더가 존재하지 않으면 생성
+        if not os.path.exists(self.output_folder):
+            os.makedirs(self.output_folder)
+        
+        self.wav_files = [f for f in os.listdir(self.folder_path) if f.endswith(".wav")]
+        self.high_cut = h_c
+    
+        self.sample_rate = 4000
         self.max_second = m_s
         self.resample_rate = re_rate
 
@@ -35,26 +43,45 @@ class SoundData(Dataset):
         if self.sample_rate != self.resample_rate:
             sig = librosa.resample(sig, orig_sr=self.sample_rate, target_sr=self.resample_rate)
             self.sample_rate = self.resample_rate
+            return sig            
 
         return sig
     
     def normalization(self, sig):
         return (sig-sig.mean())/sig.std()
 
-    def low_pass_filter(self, waveform):
+    def low_pass_filter(self, wf):
         # nyq = 0.5 * self.sample_rate
         # cut_off = self.cut_off / nyq
         # b, a = signal.butter(2, cut_off, btype='low', fs=self.sample_rate)
         # return signal.filtfilt(b, a, waveform)
-
-        waveform = torch.from_numpy(waveform)
-        lowpass_waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.cut_off, Q=1)
+        
+        waveform = torch.from_numpy(wf)
+        lowpass_waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.high_cut, Q=0.707)
         lowpass_waveform = lowpass_waveform.numpy()
         return lowpass_waveform
-
+        
+        # wf = torch.from_numpy(wf)
+        # lowpass_cutoff = 500
+        # bq_lowquid = Biquad(Biquad.LOWPASS, lowpass_cutoff, self.sample_rate)
+        # wf = torchaudio.functional.biquad(wf, bq_lowquid.b0, bq_lowquid.b1, bq_lowquid.b2, 1., bq_lowquid.a1, bq_lowquid.a2)
+        # print(type(wf))
+        # return  wf.numpy()
+    
+    # def high_pass_filter(self, waveform):
+    #     waveform = torch.from_numpy(waveform)
+    #     highpass_waveform = torchaudio.functional.highpass_biquad(waveform, self.sample_rate, cutoff_freq=self.high_cut, Q=1, reset_state=True)
+    #     return highpass_waveform.numpy()
+    
+    def band_pass_filter(self, waveform):
+        waveform = torch.from_numpy(waveform)
+        band_pass_waveform = torchaudio.functional.bandpass_biquad(waveform, self.sample_rate, central_freq=500, Q=2)
+        return waveform.numpy()
+    
     def repeat_waveform(self, waveform):
         num_frames = waveform.shape[0]
-        target_num_frames = int(self.max_second * self.sample_rate)
+        print(waveform.shape)
+        target_num_frames = int(target_duration * self.sample_rate)
 
         if num_frames < target_num_frames:
             # Repeat the waveform to reach the target duration
@@ -83,8 +110,8 @@ class SoundData(Dataset):
                 if self.max_second <= repeated_end:
                     repeated_annotation[-1] = (repeated_start, self.max_second, label)
                     break
-
-            add_start += repeated_end
+            print("add", add_start, "repeat", repeated_end)                
+            add_start = repeated_end
 
         return repeated_annotation
 
@@ -98,12 +125,23 @@ class SoundData(Dataset):
         sig, sr = librosa.load(wav_path, sr=self.sample_rate)
 
         #sig = self.normalization(sig)
+        print(self.resample_rate, self.sample_rate)
+        print(sig.shape)
         sig = self.resampling(sig)
+        print(sig.shape)
+
+        sig = self.low_pass_filter(sig)
+        sig = self.low_pass_filter(sig)
+        sig = self.low_pass_filter(sig)
+        sig = self.low_pass_filter(sig)
 
         # Preprocess and repeat waveform
-        sig = self.low_pass_filter(sig)
-        processed_waveform = self.repeat_waveform(sig)
+        
+        #sig = self.band_pass_filter(sig)
+        #sig = self.high_pass_filter(sig)
 
+        processed_waveform = self.repeat_waveform(sig)
+       
         # Get the corresponding TSV file
         tsv_file = file_name + ".tsv"
         tsv_path = os.path.join(self.folder_path, tsv_file)
@@ -118,6 +156,10 @@ class SoundData(Dataset):
         # Create a new DataFrame with the repeated annotation
         repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'annotations'])
 
+        # Save the new TSV file in the output folder
+        output_path = os.path.join(self.output_folder, file_name + ".tsv")
+        repeated_labels_df.to_csv(output_path, sep='\t', header=False, index=False)
+
         return {
             'file_name': file_name,
             "waveform": processed_waveform,
@@ -126,9 +168,13 @@ class SoundData(Dataset):
 
 
 if __name__ == '__main__':
-    data_folder_path = "./data/"
-    dataset = SoundData(data_folder_path)
+    data_folder_path = "./raw_data/"
+    output_folder = "./"
+
+    dataset = SoundData(data_folder_path, o_p=output_folder)
 
     # Access individual data samples
-    sample = dataset[3]
+    sample = dataset[200]
     print(sample['waveform'])
+    print(sample['file_name'])
+    
