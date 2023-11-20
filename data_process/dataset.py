@@ -32,7 +32,7 @@ class SoundData(Dataset):
         self.wav_files = [f for f in os.listdir(self.folder_path) if f.endswith(".wav")]
         self.high_cut = h_c
     
-        self.sample_rate = 4000
+        self.sample_rate = None
         self.max_second = m_s
         self.resample_rate = re_rate
 
@@ -46,20 +46,21 @@ class SoundData(Dataset):
             return sig            
 
         return sig
-    
+
     def normalization(self, sig):
         return (sig-sig.mean())/sig.std()
 
-    def low_pass_filter(self, wf):
+    def low_pass_filter(self, wf, n=1):
         # nyq = 0.5 * self.sample_rate
         # cut_off = self.cut_off / nyq
         # b, a = signal.butter(2, cut_off, btype='low', fs=self.sample_rate)
         # return signal.filtfilt(b, a, waveform)
-        
+
         waveform = torch.from_numpy(wf)
-        lowpass_waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.high_cut, Q=0.707)
-        lowpass_waveform = lowpass_waveform.numpy()
-        return lowpass_waveform
+        for i in range(n):
+            waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.high_cut, Q=0.707)
+        waveform = waveform.numpy()
+        return waveform
         
         # wf = torch.from_numpy(wf)
         # lowpass_cutoff = 500
@@ -81,7 +82,7 @@ class SoundData(Dataset):
     def repeat_waveform(self, waveform):
         num_frames = waveform.shape[0]
         print(waveform.shape)
-        target_num_frames = int(target_duration * self.sample_rate)
+        target_num_frames = int(self.max_second * self.sample_rate)
 
         if num_frames < target_num_frames:
             # Repeat the waveform to reach the target duration
@@ -124,21 +125,10 @@ class SoundData(Dataset):
         waveform, self.sample_rate = torchaudio.load(wav_path)
         sig, sr = librosa.load(wav_path, sr=self.sample_rate)
 
-        #sig = self.normalization(sig)
         print(self.resample_rate, self.sample_rate)
-        print(sig.shape)
         sig = self.resampling(sig)
-        print(sig.shape)
 
         sig = self.low_pass_filter(sig)
-        sig = self.low_pass_filter(sig)
-        sig = self.low_pass_filter(sig)
-        sig = self.low_pass_filter(sig)
-
-        # Preprocess and repeat waveform
-        
-        #sig = self.band_pass_filter(sig)
-        #sig = self.high_pass_filter(sig)
 
         processed_waveform = self.repeat_waveform(sig)
        

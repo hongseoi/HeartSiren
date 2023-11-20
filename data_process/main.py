@@ -13,10 +13,9 @@ import torchaudio
 import torchaudio.transforms as T
 import matplotlib.pyplot as plt
 
-data_folder_path = './raw_data/'
-output_folder = "./processed_data"
+data_folder_path = '../../data_1107/'
 
-dataset = d.SoundData(data_folder_path, o_p=output_folder)
+dataset = d.SoundData(data_folder_path)
 
 resample_rate = 8000
 dataset.resample_rate = resample_rate
@@ -24,6 +23,8 @@ dataset.resample_rate = resample_rate
 second = 5
 dataset.max_second = second
 
+output_folder = f'spec_{resample_rate}_{second}'
+dataset.output_folder = output_folder
 
 for idx, data in enumerate(dataset):
     file_name = data['file_name']
