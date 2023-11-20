@@ -7,6 +7,7 @@ import numpy as np
 import json
 import os
 
+
 class Bbox:
     def __init__(self, f_path, max_second=10):
         self.folder_path = f_path
