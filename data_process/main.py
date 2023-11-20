@@ -14,16 +14,16 @@ import torchaudio.transforms as T
 import matplotlib.pyplot as plt
 
 data_folder_path = '../../data_1107/'
+resample_rate = 8000
+second = 7
+filter_repetition_count = 5
+output_folder = f'spec_{resample_rate}_{second}'
 
 dataset = d.SoundData(data_folder_path)
 
-resample_rate = 8000
 dataset.resample_rate = resample_rate
-
-second = 5
 dataset.max_second = second
-
-output_folder = f'spec_{resample_rate}_{second}'
+dataset.filter_repetition_count = filter_repetition_count
 dataset.output_folder = output_folder
 
 for idx, data in enumerate(dataset):
@@ -45,7 +45,7 @@ for idx, data in enumerate(dataset):
     print("last shape:", sig.shape)
     print('mel:', librosa.power_to_db(mel))
     librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=resample_rate, hop_length=input_stride) #, y_axis='mel', x_axis='time'
-    plt.savefig(f'{output_folder}/{file_name}.png', bbox_inches="tight", pad_inches=0)
+    plt.savefig(f'{output_folder}/{file_name}_{filter_repetition_count}.png', bbox_inches="tight", pad_inches=0)
     plt.plot()
     plt.close()
     # if idx == 20:

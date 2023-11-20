@@ -12,7 +12,7 @@ from filter import Biquad
 
 
 class SoundData(Dataset):
-    def __init__(self, f_p, h_c=500, m_s=10, re_rate=8000, o_p="./processed_data"):
+    def __init__(self, f_p, h_c=500, m_s=10, re_rate=8000, o_p="./processed_data", filter_repetition_count=1):
 
         """
 
@@ -36,6 +36,8 @@ class SoundData(Dataset):
         self.max_second = m_s
         self.resample_rate = re_rate
 
+        self.filter_repetition_count = filter_repetition_count
+
     def __len__(self):
         return len(self.wav_files)
 
@@ -50,14 +52,14 @@ class SoundData(Dataset):
     def normalization(self, sig):
         return (sig-sig.mean())/sig.std()
 
-    def low_pass_filter(self, wf, n=1):
+    def low_pass_filter(self, wf):
         # nyq = 0.5 * self.sample_rate
         # cut_off = self.cut_off / nyq
         # b, a = signal.butter(2, cut_off, btype='low', fs=self.sample_rate)
         # return signal.filtfilt(b, a, waveform)
 
         waveform = torch.from_numpy(wf)
-        for i in range(n):
+        for i in range(self.filter_repetition_count):
             waveform = torchaudio.functional.lowpass_biquad(waveform, self.sample_rate, cutoff_freq=self.high_cut, Q=0.707)
         waveform = waveform.numpy()
         return waveform
@@ -147,7 +149,7 @@ class SoundData(Dataset):
         repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'annotations'])
 
         # Save the new TSV file in the output folder
-        output_path = os.path.join(self.output_folder, file_name + ".tsv")
+        output_path = os.path.join(self.output_folder, file_name + '_' + str(self.filter_repetition_count) + ".tsv")
         repeated_labels_df.to_csv(output_path, sep='\t', header=False, index=False)
 
         return {
