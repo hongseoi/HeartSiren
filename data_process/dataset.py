@@ -8,11 +8,13 @@ from torch.utils.data import Dataset
 import scipy.signal as signal
 import torch
 import librosa
-from filter import Biquad
+from biquad import Biquad
+
+import multiprocessing
 
 
 class SoundData(Dataset):
-    def __init__(self, f_p, h_c=500, m_s=10, re_rate=8000, o_p="./processed_data", filter_repetition_count=1):
+    def __init__(self, f_p, c_o=500, m_s=10, re_rate=8000, o_p="./processed_data", filter_repetition_count=1):
 
         """
 
@@ -30,7 +32,7 @@ class SoundData(Dataset):
             os.makedirs(self.output_folder)
         
         self.wav_files = [f for f in os.listdir(self.folder_path) if f.endswith(".wav")]
-        self.high_cut = h_c
+        self.high_cut = c_o
     
         self.sample_rate = None
         self.max_second = m_s
@@ -83,7 +85,7 @@ class SoundData(Dataset):
     
     def repeat_waveform(self, waveform):
         num_frames = waveform.shape[0]
-        print(waveform.shape)
+
         target_num_frames = int(self.max_second * self.sample_rate)
 
         if num_frames < target_num_frames:
@@ -111,15 +113,16 @@ class SoundData(Dataset):
                 repeated_annotation.append((repeated_start, repeated_end, label))
 
                 if self.max_second <= repeated_end:
-                    repeated_annotation[-1] = (repeated_start, self.max_second, label)
+                    del repeated_annotation[-1]
                     break
-            print("add", add_start, "repeat", repeated_end)                
+
             add_start = repeated_end
 
         return repeated_annotation
 
-    def __getitem__(self, idx):
-        wav_file = self.wav_files[idx]
+    # def __getitem__(self, idx):
+    # wav_file = self.wav_files[idx]
+    def make_csv(self, wav_file):
         wav_path = os.path.join(self.folder_path, wav_file)
         file_name = os.path.splitext(wav_file)[0]
 
@@ -127,7 +130,6 @@ class SoundData(Dataset):
         waveform, self.sample_rate = torchaudio.load(wav_path)
         sig, sr = librosa.load(wav_path, sr=self.sample_rate)
 
-        print(self.resample_rate, self.sample_rate)
         sig = self.resampling(sig)
 
         sig = self.low_pass_filter(sig)
@@ -148,15 +150,22 @@ class SoundData(Dataset):
         # Create a new DataFrame with the repeated annotation
         repeated_labels_df = pd.DataFrame(repeated_annotation, columns=['start', 'end', 'annotations'])
 
-        # Save the new TSV file in the output folder
+        # # Save the new TSV file in the output folder
         output_path = os.path.join(self.output_folder, file_name + '_' + str(self.filter_repetition_count) + ".tsv")
         repeated_labels_df.to_csv(output_path, sep='\t', header=False, index=False)
 
-        return {
-            'file_name': file_name,
-            "waveform": processed_waveform,
-            "anno_data": repeated_labels_df  # Use the repeated annotation
-        }
+        # return {
+        #     'file_name': file_name,
+        #     "waveform": processed_waveform,
+        #     'resample_rate': self.resample_rate,
+        #     'second': self.max_second,
+        #     'filter_repetition_count': self.filter_repetition_count,
+        #     'output_folder': self.output_folder,
+        #     "anno_data": repeated_labels_df  # Use the repeated annotation
+        # }
+
+        return (file_name, processed_waveform, self.resample_rate, self.max_second, self.filter_repetition_count,
+                self.output_folder)
 
 
 if __name__ == '__main__':
