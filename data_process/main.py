@@ -1,95 +1,93 @@
-import librosa.display
-
-import matplotlib.pyplot as plt
-import numpy as np
-
 import dataset as d
-import wav_to_image as wti
+from mel_spectogram import MelSpecto
+from bounding_box import Bbox
+
+import multiprocessing
+from time import time
 import os
 
-# torchaudio
-import torch
-import torchaudio
-import torchaudio.transforms as T
-import matplotlib.pyplot as plt
 
-data_folder_path = '../../data_1107/'
-resample_rate = 8000
-second = 7
-filter_repetition_count = 5
-output_folder = f'spec_{resample_rate}_{second}'
+def data_processing(file_name, sig, s_r, s, f_r_c, o_f):
+    """
 
-dataset = d.SoundData(data_folder_path)
+    :param file_name: file_name
+    :param sig: processed_waveform
+    :param s_r: resample_rate
+    :param s: second
+    :param f_r_c: filter_repetition_count
+    :param o_f: output_folder
+    :return:
+    """
+    fig_size = (10, 5)
+    mel_f_n = file_name + '_' + str(f_r_c)
+    mel_spec = MelSpecto(s_r, o_f, mel_f_n)
+    mel_spec.image_save(sig, fig_size)
 
-dataset.resample_rate = resample_rate
-dataset.max_second = second
-dataset.filter_repetition_count = filter_repetition_count
-dataset.output_folder = output_folder
+    bbox = Bbox(o_f, m_s=s)
+    try:
+        r = bbox.bbox(mel_f_n)
+    except ValueError as e:
+        print('Error', mel_f_n)
+        print(e)
+        return
 
-for idx, data in enumerate(dataset):
-    file_name = data['file_name']
-    sig = data['waveform']
-
-    # STFT -> spectrogram
-    #hop_length = 512
-    # number of samples between successive frames. See librosa.core.stft
-    frame_length = 0.064
-    frame_stride = 0.025
-    input_nfft = int(round(resample_rate * frame_length))
-    input_stride = int(round(resample_rate * frame_stride))
-    print(input_stride, input_nfft)
-    hop_length = 1024
-    # display spectrogram
-    plt.figure(figsize=(10, 5))
-    mel = librosa.feature.melspectrogram(y=sig, sr=resample_rate, n_fft=input_nfft, hop_length=input_stride)
-    print("last shape:", sig.shape)
-    print('mel:', librosa.power_to_db(mel))
-    librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=resample_rate, hop_length=input_stride) #, y_axis='mel', x_axis='time'
-    plt.savefig(f'{output_folder}/{file_name}_{filter_repetition_count}.png', bbox_inches="tight", pad_inches=0)
-    plt.plot()
-    plt.close()
-    # if idx == 20:
-    #     break
-
-# # 폴더가 없으면 생성
-# output_folder = "./img/"
-# os.makedirs(output_folder, exist_ok=True)
-
-# # 변환 함수 리스트
-# mel_transforms = [
-#     T.MelSpectrogram(sample_rate=resample_rate, n_fft=300, hop_length=800, n_mels=64),
-#     T.MelSpectrogram(sample_rate=resample_rate, n_fft=400, hop_length=800, n_mels=64),
-#     T.MelSpectrogram(sample_rate=resample_rate, n_fft=500, hop_length=800, n_mels=64),
-#     T.MelSpectrogram(sample_rate=resample_rate, n_fft=600, hop_length=800, n_mels=64),
-#     T.MelSpectrogram(sample_rate=resample_rate, n_fft=700, hop_length=800, n_mels=64),
-#     T.MelSpectrogram(sample_rate=resample_rate, n_fft=800, hop_length=800, n_mels=64),
-#     T.MelSpectrogram(sample_rate=resample_rate, n_fft=900, hop_length=800, n_mels=64),
+    bbox.anno_save_file(r)
+    bbox.labeled_save_image(r, fig_size)
 
 
-#     #T.MelSpectrogram(sample_rate=resample_rate, n_fft=400, hop_length=512, n_mels=128),
-#     #T.MelSpectrogram(sample_rate=resample_rate, n_fft=400, hop_length=256, n_mels=64),
-#     #T.MelSpectrogram(sample_rate=resample_rate, n_fft=400, hop_length=256, n_mels=128), # n_fft 400 512 1024
-#     # 다른 매개변수 추가
-# ]
+if __name__ == '__main__':
+    data_folder_path = '../../data_1107/'
+    resample_rate = 20000
+    second = 10
+    filter_repetition_count = 5
+    output_folder = f'spec_{resample_rate}_{second}/'
 
-# # 데이터셋 순회
-# for idx, data in enumerate(dataset):
-#     file_name = data['file_name']
-#     sig = data['waveform']
+    dataset = d.SoundData(data_folder_path)
 
-#     # 각 변환 함수에 대해 스펙트로그램 생성 및 저장
-#     for i, mel_transform in enumerate(mel_transforms):
+    dataset.resample_rate = resample_rate
+    dataset.max_second = second
+    dataset.filter_repetition_count = filter_repetition_count
+    dataset.output_folder = output_folder
 
-#         mel = mel_transform(torch.tensor(sig).unsqueeze(0)) #배치차원추가
-#         mel_db = T.AmplitudeToDB()(mel)
+    print('데이터셋 변경')
+    print('시작', len(dataset.wav_files))
+    data_set_list = list()
+    # 병렬 처리를 위한 map 메서드 호출
+    # data_set_list = pool.starmap(dataset.make_csv, dataset.wav_files)
+    # # 프로세스 풀 종료
+    # pool.close()
+    # pool.join()
 
-#         # 스펙트로그램 저장
-#         plt.figure(figsize=(10, 5))
-#         plt.imshow(mel_db[0].numpy(), cmap='viridis', aspect='auto', origin='lower')
-#         plt.ylim(0, mel_db.shape[1])  
-#         plt.xlim(0, mel_db.shape[2]) 
-#         plt.savefig(f'{output_folder}/{file_name}_transform_{i}.png', bbox_inches="tight", pad_inches=0)
-#         plt.close()
+    for w_f in dataset.wav_files:
+        data_set_list.append(dataset.make_csv(w_f))
 
-#     if idx == 5:
-#         break
+    print('데이터셋 전처리 완료')
+
+    # data_set = dataset.data_pre_processing()
+    print(len(data_set_list))
+    # for idx, data in enumerate(dataset):
+    #     file_name = data['file_name']
+    #     sig = data['waveform']
+    #
+    #     mel_f_n = file_name + '_' + str(filter_repetition_count)
+    #     mel_spec = MelSpecto(resample_rate, output_folder, mel_f_n)
+    #     mel_spec.image_save(sig, fig_size)
+    #
+    #     bbox = Bbox(output_folder, m_s=second)
+    #     try:
+    #         r = bbox.bbox(mel_f_n)
+    #     except ValueError:
+    #         print('Error', idx, mel_f_n)
+    #         continue
+    #     bbox.anno_save_file(r)
+    #     bbox.labeled_save_image(r, fig_size)
+    start_time = time()
+    cpu_count = os.cpu_count()
+    print(cpu_count)
+    pool = multiprocessing.Pool(processes=cpu_count)
+
+    output_list = pool.starmap(data_processing, data_set_list)
+    # 프로세스 풀 종료
+    pool.close()
+    pool.join()
+    print(time() - start_time)
