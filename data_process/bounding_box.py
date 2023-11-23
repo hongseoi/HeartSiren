@@ -2,6 +2,7 @@ import torchvision.io as io
 from torchvision.utils import draw_bounding_boxes
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as F
+import torchvision.transforms as trans
 import torch
 import numpy as np
 import json
@@ -18,6 +19,8 @@ class Bbox:
         self.image = None
 
         self.output_path = ''
+
+        self.total_min_y = None
 
     def __tsv_load(self):
         self.tsv_path = self.image_path.split('.png')[0] + '.tsv'
@@ -38,6 +41,10 @@ class Bbox:
         anno_data = self.__tsv_load()
         ratio = width / self.max_second
         # anno_dict = {1: list(), 3: list()}
+
+        # 검은 부분 잘라낼때 필요함
+        min_y_list = list()
+
         anno_list = list()
         for anno in anno_data:
             min_x, max_x, l = map(lambda a: float(a), anno)
@@ -59,17 +66,49 @@ class Bbox:
 
             # 라벨: 해당 박스 리스트
             # anno_dict[l].append([min_x, min(y_list), max_x, height])
-
+            min_y_list.append(min(y_list))
             anno_list.append([min_x, min(y_list), max_x, height, l])
+
+        self.total_min_y = min(min_y_list)
+
         return anno_list
 
-    def anno_save_file(self, json_data):
-        save_folder = f'{self.folder_path}/'
-        with open(save_folder + self.file_name + '.json', 'w') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
+    def anno_save_file(self, anno_data, sub_name=None):
+        file_name = self.file_name
+        if sub_name:
+            file_name += '_' + sub_name
 
-    def labeled_save_image(self, anno_data, figsize):
-        image = self.image[:3]
+        save_folder = f'{self.folder_path}/'
+        with open(save_folder + file_name + '.json', 'w') as f:
+            json.dump(anno_data, f, ensure_ascii=False, indent=4)
+
+    def cut_black(self, anno_data, figsize):
+        image = F.to_pil_image(self.image)
+        # image = Image.open(f'{self.output_folder}/{self.file_name}.png')
+        w, h = image.size
+
+        for idx in range(len(anno_data)):
+            anno_data[idx][1] = anno_data[idx][1] - self.total_min_y
+            anno_data[idx][3] = anno_data[idx][3] - self.total_min_y
+
+        self.anno_save_file(anno_data, 'cropped')
+
+        # crop을 통해 이미지 자르기 (left,up, rigth, down)
+        crop_image = image.crop((0, 0 + self.total_min_y, w, h))
+
+        crop_image_path = self.save_image(crop_image, figsize, 'cropped')
+        crop_image = io.read_image(crop_image_path)[:3]
+
+        return anno_data, crop_image
+
+    def labeled_save_image(self, anno_data, figsize, image=None, sub_name=None):
+        labeled_name = 'labeled'
+        if sub_name:
+            labeled_name = labeled_name + '_' + sub_name
+
+        if image == None:
+            image = self.image[:3]
+
         anno_dict = {1: list(), 3: list()}
         for x_min, y_min, x_max, y_max, label in anno_data:
             box = [x_min, y_min, x_max, y_max]
@@ -82,13 +121,18 @@ class Bbox:
                 colors = 'blue'
             image = draw_bounding_boxes(image, boxes, colors=colors, width=2)
 
-        img = F.to_pil_image(image)  # torch.tensor 에서 pil 이미지로 변환
+        image = F.to_pil_image(image)  # torch.tensor 에서 pil 이미지로 변환
+
+        self.save_image(image, figsize, labeled_name)
+
+    def save_image(self, image, figsize, sub_name):
         plt.figure(figsize=figsize)
-        plt.imshow(np.asarray(img))  # numpy 배열로 변경후, 가로로 이미지를 나열
+        plt.imshow(np.asarray(image))  # numpy 배열로 변경후, 가로로 이미지를 나열
         plt.axis('off')
-        plt.savefig(f'{self.folder_path}/{self.file_name}_labeled.png', bbox_inches="tight", pad_inches=0)
+        plt.savefig(f'{self.folder_path}/{self.file_name}_{sub_name}.png', bbox_inches="tight", pad_inches=0)
         plt.plot()
         plt.close()
+        return f'{self.folder_path}/{self.file_name}_{sub_name}.png'
 
 
 if __name__ == '__main__':
