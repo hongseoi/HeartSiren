@@ -34,13 +34,16 @@ def data_processing(file_name, sig, s_r, s, f_r_c, o_f):
     bbox.anno_save_file(r)
     bbox.labeled_save_image(r, fig_size)
 
+    anno_data, image = bbox.cut_black(r, fig_size)
+    bbox.labeled_save_image(anno_data, fig_size, image=image, sub_name='cropped')
+
 
 if __name__ == '__main__':
     data_folder_path = '../../data_1107/'
     resample_rate = 20000
-    second = 10
+    second = 5
     filter_repetition_count = 5
-    output_folder = f'spec_{resample_rate}_{second}/'
+    output_folder = f'../../data_mel_spec/spec_{resample_rate}_{second}/'
 
     dataset = d.SoundData(data_folder_path)
 
@@ -57,10 +60,10 @@ if __name__ == '__main__':
     # # 프로세스 풀 종료
     # pool.close()
     # pool.join()
-
+    start_time = time()
     for w_f in dataset.wav_files:
         data_set_list.append(dataset.make_csv(w_f))
-
+    print(time() - start_time)
     print('데이터셋 전처리 완료')
 
     # data_set = dataset.data_pre_processing()
