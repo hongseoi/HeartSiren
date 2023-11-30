@@ -14,7 +14,7 @@ import multiprocessing
 
 
 class SoundData(Dataset):
-    def __init__(self, f_p, c_o=500, m_s=10, re_rate=8000, o_p="./processed_data", filter_repetition_count=1):
+    def __init__(self, f_p, c_o=500, m_s=10, re_rate=8000, o_p=None, filter_repetition_count=1):
 
         """
 
@@ -27,9 +27,9 @@ class SoundData(Dataset):
         self.folder_path = f_p
         self.output_folder = o_p
 
-        # 폴더가 존재하지 않으면 생성
-        if not os.path.exists(self.output_folder):
-            os.makedirs(self.output_folder)
+        # # 폴더가 존재하지 않으면 생성
+        # if not os.path.exists(self.output_folder):
+        #     os.makedirs(self.output_folder)
         
         self.wav_files = [f for f in os.listdir(self.folder_path) if f.endswith(".wav")]
         self.high_cut = c_o

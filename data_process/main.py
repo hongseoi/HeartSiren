@@ -40,10 +40,12 @@ def data_processing(file_name, sig, s_r, s, f_r_c, o_f):
 
 if __name__ == '__main__':
     data_folder_path = '../../data_1107/'
-    resample_rate = 20000
+    # data_folder_path = '../../2/'
+    resample_rate = 8000
     second = 5
     filter_repetition_count = 5
     output_folder = f'../../data_mel_spec/spec_{resample_rate}_{second}/'
+    # output_folder = f'../../2/'
 
     dataset = d.SoundData(data_folder_path)
 
@@ -55,35 +57,13 @@ if __name__ == '__main__':
     print('데이터셋 변경')
     print('시작', len(dataset.wav_files))
     data_set_list = list()
-    # 병렬 처리를 위한 map 메서드 호출
-    # data_set_list = pool.starmap(dataset.make_csv, dataset.wav_files)
-    # # 프로세스 풀 종료
-    # pool.close()
-    # pool.join()
     start_time = time()
     for w_f in dataset.wav_files:
         data_set_list.append(dataset.make_csv(w_f))
     print(time() - start_time)
     print('데이터셋 전처리 완료')
 
-    # data_set = dataset.data_pre_processing()
     print(len(data_set_list))
-    # for idx, data in enumerate(dataset):
-    #     file_name = data['file_name']
-    #     sig = data['waveform']
-    #
-    #     mel_f_n = file_name + '_' + str(filter_repetition_count)
-    #     mel_spec = MelSpecto(resample_rate, output_folder, mel_f_n)
-    #     mel_spec.image_save(sig, fig_size)
-    #
-    #     bbox = Bbox(output_folder, m_s=second)
-    #     try:
-    #         r = bbox.bbox(mel_f_n)
-    #     except ValueError:
-    #         print('Error', idx, mel_f_n)
-    #         continue
-    #     bbox.anno_save_file(r)
-    #     bbox.labeled_save_image(r, fig_size)
     start_time = time()
     cpu_count = os.cpu_count()
     print(cpu_count)
@@ -94,3 +74,11 @@ if __name__ == '__main__':
     pool.close()
     pool.join()
     print(time() - start_time)
+
+    # for i in data_set_list:
+    #     print(i)
+    #     data_processing(*i)
+    #     break
+
+
+    # 50298_TV.wav
