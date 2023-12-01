@@ -61,14 +61,15 @@ class MelSpecto:
         win_length = int(round(self.sample_rate * frame_length))
         n_fft = win_length
         hop_length = int(round(self.sample_rate * frame_stride))
-
-        # n_mels = ?
+        n_mels_dict = {4000: 64, 8000: 64, 12000: 128, 16000: 128, 20000: 128, 24000: 512}
+        n_mels = n_mels_dict[self.sample_rate]
+        # fmax = ?
 
         # display spectrogram
         mel = librosa.feature.melspectrogram(y=np.array(sig), sr=self.sample_rate, n_fft=n_fft, hop_length=hop_length,
-                                             win_length=win_length)
+                                             win_length=win_length, n_mels=n_mels)
         # , y_axis='mel', x_axis='time'
-        librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=self.sample_rate, hop_length=hop_length)
+        librosa.display.specshow(librosa.power_to_db(mel, ref=np.max), sr=self.sample_rate)
 
         # display spectrogram
         # mel = librosa.feature.melspectrogram(y=np.array(sig), sr=self.sample_rate)

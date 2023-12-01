@@ -40,13 +40,12 @@ class Bbox:
 
         anno_data = self.__tsv_load()
         ratio = width / self.max_second
-        # anno_dict = {1: list(), 3: list()}
 
         # 검은 부분 잘라낼때 필요함
         min_y_list = list()
 
         anno_list = list()
-        for anno in anno_data:
+        for idx, anno in enumerate(anno_data):
             min_x, max_x, l = map(lambda a: float(a), anno)
 
             min_x = int(min_x * ratio)
@@ -55,19 +54,26 @@ class Bbox:
 
             y_list = list()
             for x in range(min_x, max_x + 1):
-                min_height = height // 2
+                min_height = 0
 
-                for y in range(height // 2, height):
+                for y in range(height):
                     if self.image[2, y, x] <= 50:
                         if y > min_height:
                             min_height = y
 
                 y_list.append(min_height)
 
+            min_y = min(y_list)
+
+            if idx == len(anno_data) - 1:
+                avg_y = sum(min_y_list) / len(min_y_list)
+                if min_y < int(avg_y * 0.8):
+                    min_y = min(min_y_list)
+
             # 라벨: 해당 박스 리스트
             # anno_dict[l].append([min_x, min(y_list), max_x, height])
-            min_y_list.append(min(y_list))
-            anno_list.append([min_x, min(y_list), max_x, height, l])
+            min_y_list.append(min_y)
+            anno_list.append([min_x, min_y, max_x, height, l])
 
         self.total_min_y = min(min_y_list)
 
@@ -92,12 +98,14 @@ class Bbox:
             anno_data[idx][3] = anno_data[idx][3] - self.total_min_y
 
         self.anno_save_file(anno_data, 'cropped')
+        try:
+            # crop을 통해 이미지 자르기 (left,up, rigth, down)
+            crop_image = image.crop((0, 0 + self.total_min_y, w, h))
 
-        # crop을 통해 이미지 자르기 (left,up, rigth, down)
-        crop_image = image.crop((0, 0 + self.total_min_y, w, h))
-
-        crop_image_path = self.save_image(crop_image, figsize, 'cropped')
-        crop_image = io.read_image(crop_image_path)[:3]
+            crop_image_path = self.save_image(crop_image, figsize, 'cropped')
+            crop_image = io.read_image(crop_image_path)[:3]
+        except SystemError as e:
+            print(self.file_name, self.total_min_y)
 
         return anno_data, crop_image
 
@@ -117,6 +125,12 @@ class Bbox:
         for k, v in anno_dict.items():
             boxes = torch.tensor(v, dtype=torch.float)
             colors = 'red'
+            if k == 0:
+                colors = 'white'
+            if k == 2:
+                colors = 'yellow'
+            if k == 4:
+                colors = 'pink'
             if k == 3:
                 colors = 'blue'
             image = draw_bounding_boxes(image, boxes, colors=colors, width=2)
