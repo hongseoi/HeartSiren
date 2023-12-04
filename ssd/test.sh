@@ -1,0 +1,1 @@
+python detection.py --data-path datasets/spec_8000_5/non_cropped --dataset circor --device cuda --weights-backbone IMAGENET1K_V2 --resume pretrained_8000_5/checkpoint.pth --test-only
